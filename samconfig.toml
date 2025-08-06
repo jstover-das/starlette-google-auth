@@ -1,0 +1,20 @@
+version=0.1
+
+[default.build.parameters]
+use_container = false
+
+[default.deploy.parameters]
+stack_name = "etl-qa-reporting-serverless"
+region = "ap-southeast-2"
+capabilities = "CAPABILITY_IAM"
+s3_bucket = "das-etl--sam-deployments"
+s3_prefix = "etl-qa-reporting-serverless"
+parameter_overrides = "ENV=production ARCH=x86_64"
+
+[staging.deploy.parameters]
+stack_name = "etl-qa-reporting-serverless"
+region = "ap-southeast-2"
+capabilities = "CAPABILITY_IAM"
+s3_bucket = "das-etl--sam-deployments"
+s3_prefix = "etl-qa-reporting-serverless"
+parameter_overrides = "ENV=staging ARCH=x86_64"

@@ -1,0 +1,257 @@
+{% extends 'base.html' %}
+
+{% block title %}ETL QA Reporting{% endblock title %}
+
+{% block content %}
+{% if not authenticated %}
+<div class="ui hidden divider"></div>
+<div class="ui container" x-data="{spinner: false}">
+    <div class="ui center aligned grid text">
+    <a id="loginBtn" class="ui large blue button" href="{{ url_for('login') }}" x-show="!spinner" x-on:click="spinner = !spinner">
+        <i class="google icon"></i>
+        Login
+    </a>
+    <div class="ui active inline loader" x-show="spinner"></div>
+    </div>
+</div>
+
+{% else %}
+<div id="main" class="ui container" x-data="{page: 'platform'}" x-init="page = new URLSearchParams(window.location.search).get('tab') ?? 'platform' ">
+
+    <div class="ui top attached labeled icon tabular menu">
+        <a class="item" :class="page === 'platform' ? 'active' : ''" x-on:click="page = 'platform'">
+            <i class="globe icon"></i>Rural Platform
+        </a>
+        <a class="item" :class="page === 'hullscrubber' ? 'active' : ''" x-on:click="page = 'hullscrubber'">
+            <i class="file icon"></i>Processing (hullscrubber)
+        </a>
+
+        <a class="item" :class="page === 'fme' ? 'active' : ''" x-on:click="page = 'fme'">
+            <i class="file alternate icon"></i>Processing (FME)
+        </a>
+
+        <div class="right menu">
+            <a class="item" href="{{ url_for('logout') }}">
+                <i class="sign-out icon"></i>Logout
+            </a>
+        </div>
+    </div>
+
+    <div class="ui bottom attached segment" x-show="page === 'platform'">
+
+        <table id="recentPlatformReportsTable" class="display ui sortable celled table">
+            <caption>Latest Executions</caption>
+            <thead>
+                <tr>
+                    <th>Spec Name</th>
+                    <th>Passed</th>
+                    <th>Version</th>
+                    <th>Environment</th>
+                    <th>Timestamp</th>
+                    <th>Report</th>
+                    <th>Assets</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in platform_reports[:5] %}
+                <tr>
+                    <td>{{ row.specName }}</td>
+                    <td><i class="{{ 'check' if row.passed else 'exclamation circle' }} icon"></i></td>
+                    <td>{{ row.version }}</td>
+                    <td>{{ row.environment }}</td>
+                    <td>{{ row.timestamp | format_timestamp }}</td>
+                    <td><a href="/-/{{ row.reportUrl }}"><i class="file alternate icon"></i></a></td>
+                    <td><a href="/-/{{ row.assetsUrl }}"><i class="download icon"></i></a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <table id="platformReportsTable" class="display ui sortable celled table">
+            <caption>All Executions</caption>
+            <thead>
+                <tr>
+                    <th>Spec Name</th>
+                    <th>Passed</th>
+                    <th>Version</th>
+                    <th>Environment</th>
+                    <th>Timestamp</th>
+                    <th>Report</th>
+                    <th>Assets</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in platform_reports %}
+                <tr>
+                    <td>{{ row.specName }}</td>
+                    <td><i class="{{ 'check' if row.passed else 'exclamation circle' }} icon"></i></td>
+                    <td>{{ row.version }}</td>
+                    <td>{{ row.environment }}</td>
+                    <td>{{ row.timestamp | format_timestamp }}</td>
+                    <td><a href="/-/{{ row.reportUrl }}"><i class="file alternate icon"></i></a></td>
+                    <td><a href="/-/{{ row.assetsUrl }}"><i class="download icon"></i></a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="ui bottom attached segment" x-show="page === 'hullscrubber'">
+        <table id="hullscrubberReportsTable" class="display ui sortable celled table">
+            <caption>Hullscrubber QA Reports</caption>
+            <thead>
+                <tr>
+                    <th>Dataset</th>
+                    <th>Status</th>
+                    <th>Version</th>
+                    <th>Timestamp</th>
+                    <th>Records</th>
+                    <th>Report</th>
+                    <th>Data File</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in hullscrubber_reports %}
+                <tr>
+                    <td>{{ row.datasetKey }}</td>
+                    <td>{{ row.status }}</td>
+                    <td>{{ row.version }}</td>
+                    <td>{{ row.timestamp | format_timestamp }}</td>
+                    <td>{{ row.records }}</td>
+                    <td><a href="/-/{{ row.reportUrl }}"><i class="file alternate icon"></i></a></td>
+
+                    {#
+                        TODO: hullscrubber dataUrls are currently full URLS but should be changed to S3 URIs in future
+                    #}
+                    {% if row.dataUrl.startswith('http') %}
+                    <td><a href="{{ row.dataUrl }}"><i class="download icon"></i></a></td>
+                    {% else %}
+                    <td><a href="/-/{{ row.dataUrl }}"><i class="download icon"></i></a></td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="ui bottom attached segment" x-show="page === 'fme'">
+        <table id="fmeReportsTable" class="display ui sortable celled table">
+            <caption>FME Reports</caption>
+            <thead>
+                <tr>
+                    <th>Dataset</th>
+                    <th>Status</th>
+                    <th>Version</th>
+                    <th>Timestamp</th>
+                    <th>Records</th>
+                    <th>Report</th>
+                    <th>Data File</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+    </div>
+
+</div>
+
+{% endif %}
+{% endblock content %}
+
+{% block style %}
+{% if authenticated %}
+<style>
+    /* Table caption/title */
+    table > caption {
+        caption-side: top;
+        text-align: left;
+        margin-bottom: 10px;
+        font-weight: bold;
+        font-size: large;
+    }
+    /* Row group headers */
+    #platformReportsTable>tbody>tr.dtrg-start {
+        background-color: lavender;
+        font-weight: bold;
+        cursor: pointer;
+        box-shadow: 0px 2px 0px 0px rgb(0, 0, 0) inset;
+    }
+    /* Gap between the "Latest" and "All" tables */
+    #recentPlatformReportsTable_wrapper.dt-container {
+        margin-bottom: 50px;
+    }
+    /* Move search box in line with caption */
+    #platformReportsTable_wrapper .dt-layout-table {
+        margin-top: -35px;
+    }
+</style>
+{% endif %}
+{% endblock style %}
+
+
+{% block script %}
+{% if authenticated %}
+<script>
+    // Manage state of collapsed groups
+    // TODO: Look for a better library for handling table data
+    var expandedGroups = {
+        platformTable: {}
+    };
+    platformReportsTableColumns = document.querySelectorAll('#recentPlatformReportsTable th').length;
+    const platformReportsTable = new DataTable('#platformReportsTable', {
+        paging: false,
+        columnDefs:[
+            {targets: '_all', defaultContent: '', className: 'dt-right'},
+            {targets: [0], visible:false},
+            {targets: [1, 5, 6], width: '5%'},
+        ],
+        rowGroup: {
+            dataSrc: 0,
+            startRender: function (rows, group) {
+                var collapsed = !expandedGroups.platformTable[group];
+                rows.nodes().each(function (r) {
+                    r.style.display = collapsed ? 'none' : '';
+                });
+                const indicator = collapsed ? "&#9656;" : "&#9662;";
+                return $('<tr/>')
+                    .append(`<td colspan="${platformReportsTableColumns - 1}">${group} (${rows.count()}) &nbsp;&nbsp;${indicator} </td>`)
+                    .attr('data-name', group)
+                    .toggleClass('collapsed', collapsed);
+            }
+        }
+    });
+    // Collapse row grouping when group header is clicked
+    $('#platformReportsTable tbody').on('click', 'tr.dtrg-start', function () {
+        var name = $(this).data('name');
+        expandedGroups.platformTable[name] = !expandedGroups.platformTable[name];
+        platformReportsTable.draw(false);
+        console.log(expandedGroups.platformTable);
+    });
+
+    // Initialise the DataTable for the 5 most recent reports
+    const recentPlatformReportsTable = new DataTable("#recentPlatformReportsTable", {
+        paging: false,
+        info: false,
+        searching: false,
+        columnDefs: [
+            {targets: '_all', defaultContent: '', className: 'dt-right'},
+            {targets: [1, 5, 6], width: '5%'},
+        ],
+        order: [4, 'desc'],
+    });
+
+    // Initialise hullscrubber reports DataTable
+    const hullscrubberReportsTable = new DataTable('#hullscrubberReportsTable', {
+        pageLength: 100,
+        order: [3, 'desc'],
+    });
+
+    // Initialise FME reports DataTable
+    const fmeReportsTable = new DataTable('#fmeReportsTable', {
+        pageLength: 100,
+        order: [3, 'desc'],
+    });
+
+</script>
+{% endif %}
+{% endblock script %}

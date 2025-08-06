@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    <meta charset="utf-8">
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.9/dist/cdn.min.js"></script>
+
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.1.1.min.js" integrity="sha256-hVVnYaiADRTO2PzUGmuLJr8BLUSjGIZsDYGmIJLv2b8=" crossorigin="anonymous"></script>
+
+    <!-- Semantic UI-->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/semantic-ui/2.5.0/semantic.min.js" integrity="sha512-Xo0Jh8MsOn72LGV8kU5LsclG7SUzJsWGhXbWcYs2MAmChkQzwiW/yTQwdJ8w6UA9C6EVG18GHb/TrYpYCjyAQw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/semantic-ui/2.5.0/semantic.min.css" integrity="sha512-KXol4x3sVoO+8ZsWPFI/r5KBVB/ssCGB5tsv2nVOKwLg33wTFP3fmnXa47FdSVIshVTgsYk/1734xSk9aFIa4A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+    <!-- DataTables -->
+    <link rel="stylesheet" href="//cdn.datatables.net/2.2.2/css/dataTables.dataTables.min.css" />
+    <script src="//cdn.datatables.net/2.2.2/js/dataTables.min.js"></script>
+    <link rel="stylesheet" href="//cdn.datatables.net/rowgroup/1.5.1/css/rowGroup.dataTables.min.css" />
+    <script src="//cdn.datatables.net/rowgroup/1.5.1/js/dataTables.rowGroup.min.js"></script>
+
+    <title>{% block title %}{% endblock title %}</title>
+
+    {% block style %}{% endblock style %}
+</head>
+
+<body>
+
+<div id="header" class="ui center aligned icon header segment">
+    <img class="icon" src="{{ url_for('static', path='logo.svg') }}" />
+    <h1>ETL QA Reporting</h1>
+</div>
+
+{% set colour = {'message': 'olive', 'success': 'green', 'warning': 'yellow', 'error': 'red'} %}
+{% for category, message in messages %}
+<div class="ui {{ colour.get(category) }} message">
+    <i class="close icon"></i>
+    <div class="header"><strong>{{ category | capitalize }}</strong></div>
+    <p>{{message}}</p>
+</div>
+{% endfor %}
+
+{% block content %}{% endblock content %}
+
+{% block script %}{% endblock script %}
+</body>
+</html>

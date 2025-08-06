@@ -1,0 +1,141 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  ETL QA Site (serverless)
+
+Globals:
+  Function:
+    Timeout: 30
+
+
+Parameters:
+  ENV:
+    Type: String
+    Default: production
+    Description: Environment and Stage Name
+    AllowedValues:
+      - local
+      - production
+      - staging
+
+  ARCH:
+    Type: String
+    Default: x86_64
+    Description: CPU Architecture to use
+    AllowedValues:
+      - x86_64
+      - arm64
+
+  # Infra values
+  SecurityGroupIds:
+    Type: AWS::SSM::Parameter::Value<List<String>>
+    Default: /api/security-group-ids
+
+  SubnetIds:
+    Type: AWS::SSM::Parameter::Value<List<String>>
+    Default: /api/subnet-ids
+
+  HostedZoneId:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /api/hosted-zone-id
+
+  CertificateArn:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /api/certificate-arn
+
+  DomainName:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /api/domain-name
+
+  # Application Environment variables
+  GoogleClientId:
+    Type: String
+  GoogleClientSecret:
+    Type: String
+  SecretKey:
+    Type: String
+
+
+
+Conditions:
+  IsProduction: !Equals [!Ref ENV, "production"]
+
+
+Resources:
+
+  ApiGateway:
+    Type: AWS::Serverless::Api
+    Properties:
+      Description: "DAS ETL QA Reporting Site (serverless) API Gateway"
+      StageName: !Sub "${ENV}"
+      Name: !Sub "${AWS::StackName}-${ENV}"
+      MethodSettings:
+        - HttpMethod: '*'
+          ResourcePath: '/*'
+          ThrottlingBurstLimit: 200
+          ThrottlingRateLimit: 100
+      MinimumCompressionSize: 25
+      Cors:
+        AllowMethods: "'GET, POST, OPTIONS'"
+        AllowOrigin: "'*'"
+      BinaryMediaTypes:
+        - "*/*"
+
+      Domain:
+        CertificateArn: !Ref CertificateArn
+        DomainName: !If [IsProduction, !Sub "qa-serverless.${DomainName}", !Sub "qa-serverless-${ENV}.${DomainName}"]
+        Route53:
+          HostedZoneId: !Ref HostedZoneId
+          EvaluateTargetHealth: true
+
+  Function:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-${ENV}"
+      CodeUri: app/
+      Handler: main.lambda_handler
+      Runtime: python3.12
+      MemorySize: 1536
+      Architectures:
+        - !Ref ARCH
+      Environment:
+        Variables:
+          ENV: !Ref ENV
+          GOOGLE_CLIENT_ID: !Ref GoogleClientId
+          GOOGLE_CLIENT_SECRET: !Ref GoogleClientSecret
+          SECRET_KEY: !Ref SecretKey
+
+      VpcConfig:
+        SecurityGroupIds: !Ref SecurityGroupIds
+        SubnetIds: !Ref SubnetIds
+
+      Policies:
+        - Statement:
+          - Effect: Allow
+            Action:
+              - s3:GetObject
+            Resource: "*"
+          - Effect: Allow
+            Action:
+              - dynamodb:DescribeStream
+              - dynamodb:GetRecords
+              - dynamodb:GetShardIterator
+              - dynamodb:ListStreams
+              - dynamodb:Scan
+            Resource: "*"
+
+      Events:
+        Root:
+          Type: Api
+          Properties:
+            Path: /
+            Method: ANY
+            RestApiId:
+              Ref: ApiGateway
+        Proxy:
+          Type: Api
+          Properties:
+            Path: /{proxy+}
+            Method: ANY
+            RestApiId:
+              Ref: ApiGateway
